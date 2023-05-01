@@ -106,6 +106,10 @@ import co.nstant.in.cbor.model.SpecialType;
 import co.nstant.in.cbor.model.UnicodeString;
 import co.nstant.in.cbor.model.UnsignedInteger;
 
+import com.google.cose.Sign1Message;
+import com.google.cose.exceptions.CoseException;
+import com.google.cose.utils.Algorithm;
+
 /**
  * Utility functions.
  */
@@ -549,48 +553,34 @@ class Util {
         }
 
         int keySize;
-        long alg;
+        Number alg;
         if (s.getAlgorithm().equals("SHA256withECDSA")) {
             keySize = 32;
-            alg = COSE_ALG_ECDSA_256;
+            alg = Algorithm.SIGNING_ALGORITHM_ECDSA_SHA_256.getCoseAlgorithmId();
         } else if (s.getAlgorithm().equals("SHA384withECDSA")) {
             keySize = 48;
-            alg = COSE_ALG_ECDSA_384;
+            alg = Algorithm.SIGNING_ALGORITHM_ECDSA_SHA_384.getCoseAlgorithmId();
         } else if (s.getAlgorithm().equals("SHA512withECDSA")) {
             keySize = 64;
-            alg = COSE_ALG_ECDSA_512;
+            alg = Algorithm.SIGNING_ALGORITHM_ECDSA_SHA_512.getCoseAlgorithmId();
         } else {
             throw new IllegalArgumentException("Unsupported algorithm " + s.getAlgorithm());
         }
 
-        CborBuilder protectedHeaders = new CborBuilder();
-        MapBuilder<CborBuilder> protectedHeadersMap = protectedHeaders.addMap();
-        protectedHeadersMap.put(COSE_LABEL_ALG, alg);
-        byte[] protectedHeadersBytes = cborEncode(protectedHeaders.build().get(0));
-
-        byte[] toBeSigned = coseBuildToBeSigned(protectedHeadersBytes, data, detachedContent);
-
-        byte[] coseSignature = null;
-        try {
-            s.update(toBeSigned);
-            byte[] derSignature = s.sign();
-            coseSignature = signatureDerToCose(derSignature, keySize);
-        } catch (SignatureException e) {
-            throw new IllegalStateException("Error signing data", e);
-        }
+        Map protectedHeaders = new Map();
+        protectedHeaders.put(new UnsignedInteger(COSE_LABEL_ALG), alg);
+        byte[] protectedHeadersBytes = cborEncode(protectedHeaders);
 
         CborBuilder builder = new CborBuilder();
-        ArrayBuilder<CborBuilder> array = builder.addArray();
-        array.add(protectedHeadersBytes);
-        MapBuilder<ArrayBuilder<CborBuilder>> unprotectedHeaders = array.addMap();
+        MapBuilder<CborBuilder> unprotectedHeadersBuilder = builder.addMap();
         try {
             if (certificateChain != null && certificateChain.size() > 0) {
                 if (certificateChain.size() == 1) {
                     X509Certificate cert = certificateChain.iterator().next();
-                    unprotectedHeaders.put(COSE_LABEL_X5CHAIN, cert.getEncoded());
+                    unprotectedHeadersBuilder.put(COSE_LABEL_X5CHAIN, cert.getEncoded());
                 } else {
-                    ArrayBuilder<MapBuilder<ArrayBuilder<CborBuilder>>> x5chainsArray =
-                            unprotectedHeaders.putArray(COSE_LABEL_X5CHAIN);
+                    ArrayBuilder<MapBuilder<CborBuilder>> x5chainsArray =
+                            unprotectedHeadersBuilder.putArray(COSE_LABEL_X5CHAIN);
                     for (X509Certificate cert : certificateChain) {
                         x5chainsArray.add(cert.getEncoded());
                     }
@@ -599,14 +589,33 @@ class Util {
         } catch (CertificateEncodingException e) {
             throw new IllegalStateException("Error encoding certificate", e);
         }
-        if (data == null || data.length == 0) {
-            array.add(new SimpleValue(SimpleValueType.NULL));
-        } else {
-            array.add(data);
-        }
-        array.add(coseSignature);
 
-        return builder.build().get(0);
+        byte[] message = dataLen == 0? new byte[0] : data;
+
+        byte[] coseSignature = null;
+        try {
+            s.update(coseBuildToBeSigned(protectedHeadersBytes, data, detachedContent));
+            byte[] derSignature = s.sign();
+            coseSignature = signatureDerToCose(derSignature, keySize);
+        } catch (SignatureException e) {
+            throw new IllegalStateException("Error signing data", e);
+        }
+
+        DataItem signedObject;
+        try {
+            signedObject = Sign1Message.builder()
+                    .withProtectedHeaders(protectedHeaders)
+                    .withUnprotectedHeaders((Map) unprotectedHeadersBuilder.end().build().get(0))
+                    .withMessage(message)
+                    .withSignature(coseSignature)
+                    .build().encode();
+        } catch (CborException e) {
+            throw new IllegalStateException("Error building signing object", e);
+        } catch (CoseException e) {
+            throw new IllegalStateException("Error encoding signing object", e);
+        }
+
+        return signedObject;
     }
 
     /**
