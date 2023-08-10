@@ -1,3 +1,9 @@
+buildscript {
+    dependencies {
+        classpath("org.jetbrains.dokka:versioning-plugin:1.8.20")
+    }
+}
+
 plugins {
     alias libs.plugins.android.application apply false
     alias libs.plugins.android.library apply false
@@ -13,8 +19,27 @@ plugins {
 
 version = 'YYYYMMDD'
 
+//subprojects {
+////    repositories {
+////        mavenCentral()
+////    }
+//    apply {
+////        plugin("org.jetbrains.kotlin.jvm")
+//        plugin("org.jetbrains.dokka")
+//    }
+//    val dokkaPlugin by configurations
+//    dependencies {
+//        dokkaPlugin("org.jetbrains.dokka:versioning-plugin:1.8.20")
+//    }
+//}
+
 tasks.dokkaHtmlMultiModule {
     moduleName.set(rootProject.name)
     // This has it output to the root directory. Default is to put it in build/dokka.
     // outputDirectory.set(file(version+"/documentation"))
+    pluginConfiguration<org.jetbrains.dokka.versioning.VersioningPlugin, org.jetbrains.dokka.versioning.VersioningConfiguration> {
+        version = currentVersion
+        olderVersionsDir = file(previousVersionsDirectory)
+    }
+
 }
