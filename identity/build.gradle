@@ -1,7 +1,7 @@
 plugins {
     id("java-library")
     id "org.jetbrains.kotlin.jvm"
-    alias libs.plugins.dokka
+//    alias libs.plugins.dokka
 }
 
 java {
@@ -24,4 +24,6 @@ dependencies {
 
     testImplementation "junit:junit:4.13.2"
     testImplementation "org.bouncycastle:bcprov-jdk15on:1.69"
+
+//    configurations["dokkaPlugin"] "org.jetbrains.dokka:versioning-plugin:1.8.20"
 }
