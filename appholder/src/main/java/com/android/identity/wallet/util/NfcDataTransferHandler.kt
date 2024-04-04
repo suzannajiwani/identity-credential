@@ -19,6 +19,7 @@ package com.android.identity.wallet.util
 import android.nfc.cardemulation.HostApduService
 import android.os.Bundle
 import com.android.identity.android.mdoc.transport.DataTransportNfc
+import com.android.identity.wallet.document.JCardSimTransport
 import com.android.identity.wallet.transfer.TransferManager
 
 class NfcDataTransferHandler : HostApduService() {
@@ -32,8 +33,13 @@ class NfcDataTransferHandler : HostApduService() {
     }
 
     override fun processCommandApdu(commandApdu: ByteArray, extras: Bundle?): ByteArray? {
-        log("processCommandApdu: Command-> ${FormatUtil.encodeToString(commandApdu)}")
-        return DataTransportNfc.processCommandApdu(this, commandApdu)
+        //log("processCommandApdu: Command-> ${FormatUtil.encodeToString(commandApdu)}")
+        print(commandApdu)
+        if (PreferencesHelper.isDirectAccessDemoEnabled()) {
+            return DataTransportNfc.processCommandApdu(JCardSimTransport.instance(), commandApdu);
+        } else {
+            return DataTransportNfc.processCommandApdu(this, commandApdu)
+        }
     }
 
     override fun onDeactivated(reason: Int) {

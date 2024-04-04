@@ -61,6 +61,7 @@ class VerifierApp : Application() {
             trustManagerInstance.addTrustPoint(TrustPoint(it))
         }
         documentTypeRepositoryInstance = documentTypeRepository
+//        documentTypeRepositoryInstance.addDocumentType(DirectAccessDrivingLicense.getDocumentType())
         documentTypeRepositoryInstance.addDocumentType(DrivingLicense.getDocumentType())
         documentTypeRepositoryInstance.addDocumentType(VehicleRegistration.getDocumentType())
         documentTypeRepositoryInstance.addDocumentType(VaccinationDocument.getDocumentType())

@@ -15,6 +15,7 @@ import com.android.identity.cbor.CborArray
 import com.android.identity.cbor.Simple
 import com.android.identity.cbor.Tagged
 import com.android.identity.crypto.EcPublicKey
+import com.android.identity.direct_access.DirectAccessTransport
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod.Companion.combine
 import com.android.identity.mdoc.connectionmethod.ConnectionMethod.Companion.disambiguate
@@ -24,6 +25,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.Arrays
 import java.util.concurrent.Executor
+
 
 /**
  * Helper used for NFC engagement.
@@ -195,6 +197,21 @@ class NfcEngagementHelper private constructor(
      */
     fun nfcOnDeactivated(reason: Int) {
         Logger.d(TAG, "nfcOnDeactivated reason $reason")
+    }
+
+    fun nfcProcessCommandApdu(
+        apdu: ByteArray,
+        directAccessMode: Boolean, transport: DirectAccessTransport
+    ): ByteArray {
+        return if (directAccessMode) {
+            try {
+                transport.sendData(apdu)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
+            }
+        } else {
+            nfcProcessCommandApdu(apdu)
+        }
     }
 
     /**
