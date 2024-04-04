@@ -4,6 +4,7 @@ import android.content.Context
 import android.nfc.FormatException
 import android.nfc.NdefMessage
 import android.nfc.NdefRecord
+import com.android.identity.android.direct_access.DirectAccessTransport
 import com.android.identity.android.mdoc.engagement.NfcEngagementHelper.Listener
 import com.android.identity.android.mdoc.transport.DataTransport
 import com.android.identity.android.mdoc.transport.DataTransport.Companion.fromConnectionMethod
@@ -24,6 +25,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.util.Arrays
 import java.util.concurrent.Executor
+
 
 /**
  * Helper used for NFC engagement.
@@ -195,6 +197,21 @@ class NfcEngagementHelper private constructor(
      */
     fun nfcOnDeactivated(reason: Int) {
         Logger.d(TAG, "nfcOnDeactivated reason $reason")
+    }
+
+    fun nfcProcessCommandApdu(
+        apdu: ByteArray,
+        directAccessMode: Boolean, transport: DirectAccessTransport
+    ): ByteArray {
+        return if (directAccessMode) {
+            try {
+                transport.sendData(apdu)
+            } catch (e: IOException) {
+                throw RuntimeException(e)
+            }
+        } else {
+            nfcProcessCommandApdu(apdu)
+        }
     }
 
     /**

@@ -6,6 +6,7 @@ import android.content.Context
 import android.media.MediaPlayer
 import android.nfc.NfcAdapter
 import android.os.Build
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -324,8 +325,33 @@ class TransferManager private constructor(private val context: Context) {
                 )
             }
 
-            verification?.sendRequest(generator.generate())
+            Log.d("TransferManager", "DevReq")
+            var devReq = generator.generate()
+            print(devReq)
+            verification?.sendRequest(devReq)
         }
+    }
+    fun print(data: ByteArray) {
+        val NO_CHARS_IN_LINE = 1024
+        val noCounts = data.size / NO_CHARS_IN_LINE
+        val remaining = data.size % NO_CHARS_IN_LINE
+        var i = 0
+        while (i < noCounts) {
+            val str = tohexStr(data, NO_CHARS_IN_LINE * i, NO_CHARS_IN_LINE)
+            Log.d("<======>[$i]", str)
+            i++
+        }
+        val str = tohexStr(data, i * NO_CHARS_IN_LINE, remaining)
+        Log.d("<======>[$i]", str)
+    }
+
+    fun tohexStr(data: ByteArray, off: Int, len: Int): String {
+        val sb = StringBuilder()
+        println("----")
+        for (i in off until off + len) {
+            sb.append(String.format("%02X", data[i]))
+        }
+        return sb.toString()
     }
 
     private fun getReaderCAPrivateKey(): PrivateKey {

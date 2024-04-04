@@ -13,11 +13,14 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
+import com.android.identity.android.direct_access.DirectAccessTransport
 import com.android.identity.wallet.R
 import com.android.identity.wallet.adapter.DocumentAdapter
 import com.android.identity.wallet.databinding.FragmentSelectDocumentBinding
 import com.android.identity.wallet.document.DocumentInformation
 import com.android.identity.wallet.document.DocumentManager
+import com.android.identity.wallet.document.JCardSimTransport
+import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.TransferStatus
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.viewmodel.ShareDocumentViewModel
@@ -31,6 +34,7 @@ class SelectDocumentFragment : Fragment() {
     private val viewModel: ShareDocumentViewModel by activityViewModels()
     private val timeInterval = 2000 // # milliseconds passed between two back presses
     private var mBackPressed: Long = 0
+    private var transport: DirectAccessTransport? = null
 
     private val appPermissions: Array<String> =
         if (android.os.Build.VERSION.SDK_INT >= 31) {
@@ -48,6 +52,7 @@ class SelectDocumentFragment : Fragment() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        transport = JCardSimTransport.instance()
         // Ask to press twice before leave the app
         requireActivity().onBackPressedDispatcher.addCallback(
             this,
@@ -93,8 +98,16 @@ class SelectDocumentFragment : Fragment() {
                 permissionsNeeded.toTypedArray()
             )
         }
-
+        directAccessUI(PreferencesHelper.isDirectAccessDemoEnabled());
         return binding.root
+    }
+
+    private fun directAccessUI(flag: Boolean) {
+        if (flag) {
+            JCardSimTransport.instance().init()
+        } else {
+            JCardSimTransport.instance().unInit()
+        }
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
@@ -116,6 +129,7 @@ class SelectDocumentFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+        transport = null
     }
 
     private fun setupDocumentsPager(binding: FragmentSelectDocumentBinding) {
