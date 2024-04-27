@@ -18,10 +18,18 @@ data class SettingsScreenState(
     val isBlePeripheralModeEnabled: Boolean = false,
     val wifiAwareEnabled: Boolean = false,
     val nfcEnabled: Boolean = false,
-    val debugEnabled: Boolean = true
+    val debugEnabled: Boolean = true,
+    val directAccessDemoEnabled: Boolean = false
 ) {
 
-    fun isBleEnabled(): Boolean = isBleDataRetrievalEnabled || isBlePeripheralModeEnabled
+    fun isBleEnabled(): Boolean {
+        return isBleDataRetrievalEnabled
+                || isBlePeripheralModeEnabled
+    }
+
+    fun isDirectAccessDemoEnabled(): Boolean {
+        return directAccessDemoEnabled
+    }
 
     fun canToggleBleDataRetrievalMode(newBleCentralMode: Boolean): Boolean {
         val updatedState = copy(isBleDataRetrievalEnabled = newBleCentralMode)
@@ -43,11 +51,12 @@ data class SettingsScreenState(
         return updatedState.hasDataRetrieval()
     }
 
-    private fun hasDataRetrieval(): Boolean =
-        isBleDataRetrievalEnabled
+    private fun hasDataRetrieval(): Boolean {
+        return isBleDataRetrievalEnabled
                 || isBlePeripheralModeEnabled
                 || wifiAwareEnabled
                 || nfcEnabled
+    }
 
     @Parcelize
     enum class SessionEncryptionCurveOption : Parcelable {

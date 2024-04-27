@@ -370,6 +370,7 @@ public class DocumentRequest {
       byte[] scratch,
       short scratchStart) {
     short signLen = -1;
+    short innerElemCount = 0;
     mDecoder.init(buf, readerAuth, readerAuthLen);
     try {
       if ((mDecoder.readMajorType(CBORBase.TYPE_ARRAY) != 4)
@@ -418,14 +419,14 @@ public class DocumentRequest {
             tmpArray[3] = mDecoder.getCurrentOffset();
             mDecoder.increaseOffset(tmpArray[2]);
           } else if (type == CBORBase.TYPE_ARRAY) {
-            elemCount = mDecoder.readMajorType(CBORBase.TYPE_ARRAY);
-            tmpArray[1] = elemCount;
-            for (byte j = 1; j <= elemCount; j++) {
+            innerElemCount = mDecoder.readMajorType(CBORBase.TYPE_ARRAY);
+            tmpArray[1] = innerElemCount;
+            for (byte j = 1; j <= innerElemCount; j++) {
               short certLen = mDecoder.readMajorType(CBORBase.TYPE_BYTE_STRING);
-              short certStart = tmpArray[3] = mDecoder.getCurrentOffset();
+              short certStart = mDecoder.getCurrentOffset();
               mDecoder.increaseOffset(certLen);
               tmpArray[(short) (j * 2)] = certLen;
-              tmpArray[(short) (j * 3)] = certStart;
+              tmpArray[(short) ((j * 2) + 1)] = certStart;
             }
           } else {
             return -1;

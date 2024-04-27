@@ -651,7 +651,6 @@ public class PresentationApplet extends Applet implements ExtendedLength, MdlSer
       if (itemsStart == INVALID_VALUE || readerAuthStart == INVALID_VALUE) {
         ISOException.throwIt(ISO7816.SW_DATA_INVALID);
       }
-
       // Now process Items Request
       if (!processItemsRequest(
           buf, itemsStart, itemsLen, readerAuthStart, readerAuthLen, docRequest)) {
@@ -1300,8 +1299,9 @@ public class PresentationApplet extends Applet implements ExtendedLength, MdlSer
       short certLen = tmpArray[--i];
       short certEnd = (short) (certStart + certLen);
       // Now decode cert - this will return 4 parameters of the cert in mRetVal
-      mX509CertHandler.decodeCert(
-          buf, certStart, certEnd, mRetVal, scratch, scratchStart, scratchLen);
+      if (!mX509CertHandler.decodeCert(
+          buf, certStart, certEnd, mRetVal, scratch, scratchStart, scratchLen))
+        return false;
 
       if (doc.isMatchingReaderAuthKey(buf, mRetVal[5], mRetVal[6])) {
         foundAtLeastOneKey = true;
@@ -1326,7 +1326,7 @@ public class PresentationApplet extends Applet implements ExtendedLength, MdlSer
     }
     tmpArray[0] = attKeyLen;
     tmpArray[1] = attKeyStart;
-    return foundAtLeastOneKey && alg == mRetVal[0];
+    return foundAtLeastOneKey;
   }
 
   private boolean processItemsRequest(

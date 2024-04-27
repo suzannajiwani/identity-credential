@@ -1396,36 +1396,9 @@ public class X509CertHandler {
     // skip one byte and decrement tag length by one.
     retVal[3]++;
     retVal[2]--;
-    short sign_end = getNextTag(buf, retVal[3], retVal[2], retVal);
-    if (retVal[1] != ASN1_SEQUENCE) {
-      return -1;
-    }
-    short sign_s_start = getNextTag(buf, retVal[3], retVal[2], retVal);
-    if (retVal[1] != ASN1_INTEGER) {
-      return -1;
-    }
-    short sign_r_start = retVal[3];
-    short sign_r_len = retVal[2];
-    // As the signature is encoded as positive integer - the first byte may be 00. Remove that.
-    if (buf[sign_r_start] == 0) {
-      sign_r_start++;
-      sign_r_len--;
-    }
-    getNextTag(buf, sign_s_start, sign_end, retVal);
-    if (retVal[1] != ASN1_INTEGER) {
-      return -1;
-    }
-    sign_s_start = retVal[3];
-    short sign_s_len = retVal[2];
-    // As the signature is encoded as positive integer - the first byte may be 00. Remove that.
-    if (buf[sign_s_start] == 0) {
-      sign_s_start++;
-      sign_s_len--;
-    }
 
-    short index = Util.arrayCopyNonAtomic(buf, sign_r_start, scratch, scratchStart, sign_r_len);
-    index = Util.arrayCopyNonAtomic(buf, sign_s_start, scratch, index, sign_s_len);
-    return (short) (index - scratchStart);
+    Util.arrayCopyNonAtomic(buf, retVal[3], scratch, scratchStart, retVal[2]);
+    return retVal[2];
   }
 
   private short readAlg(byte[] buf, short start, short end, short[] retVal) {

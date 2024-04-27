@@ -46,6 +46,7 @@ fun SettingsScreen(
     onNfcChanged: (Boolean) -> Unit,
     onDebugChanged: (Boolean) -> Unit,
     onOpenCaCertificates: () -> Unit,
+    onDirectAccessDemoChanged: (Boolean) -> Unit,
 ) {
     Column(modifier = modifier) {
         val scrollState = rememberScrollState()
@@ -137,7 +138,14 @@ fun SettingsScreen(
                 modifier = Modifier
                     .clickable { onOpenCaCertificates() },
                 title = "Show CA Certificates",
-                subtitle = "Click here to show the CA Certificates"
+                subtitle = "Click here to show the CA Certificates")
+            SettingSectionTitle(title = "Direct Access Demo")
+            SettingToggle(
+                title = "Direct Access Demo",
+                subtitleOn = "Direct Access Demo activated",
+                subtitleOff = "Direct Access Demo deactivated",
+                isChecked = screenState.directAccessDemoEnabled,
+                onCheckedChange = onDirectAccessDemoChanged
             )
         }
     }
@@ -290,7 +298,8 @@ private fun SettingsScreenPreview() {
             onWiFiAwareChanged = {},
             onNfcChanged = {},
             onDebugChanged = {},
-            onOpenCaCertificates = {}
+            onOpenCaCertificates = {},
+            onDirectAccessDemoChanged = {}
         )
     }
 }
