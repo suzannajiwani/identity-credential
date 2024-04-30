@@ -40,6 +40,7 @@ class SettingsFragment : Fragment() {
                         onNfcChanged = settingsViewModel::onNFCChanged,
                         onDebugChanged = settingsViewModel::onDebugLoggingChanged,
                         onOpenCaCertificates = {openCaCertificates()},
+                        onDirectAccessDemoChanged = settingsViewModel::onDirectAccessDemoChanged
                     )
                 }
             }

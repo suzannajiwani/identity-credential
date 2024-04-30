@@ -36,7 +36,7 @@ class NfcDataTransferHandler : HostApduService() {
         //log("processCommandApdu: Command-> ${FormatUtil.encodeToString(commandApdu)}")
         print(commandApdu)
         if (PreferencesHelper.isDirectAccessDemoEnabled()) {
-            return DataTransportNfc.processCommandApdu(JCardSimTransport.instance(), commandApdu);
+            return DataTransportNfc.processCommandApdu(transport = JCardSimTransport.instance(), apdu = commandApdu);
         } else {
             return DataTransportNfc.processCommandApdu(this, commandApdu)
         }

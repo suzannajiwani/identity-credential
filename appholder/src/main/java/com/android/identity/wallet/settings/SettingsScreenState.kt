@@ -18,10 +18,15 @@ data class SettingsScreenState(
     val isBlePeripheralModeEnabled: Boolean = false,
     val wifiAwareEnabled: Boolean = false,
     val nfcEnabled: Boolean = false,
-    val debugEnabled: Boolean = true
+    val debugEnabled: Boolean = true,
+    val directAccessDemoEnabled: Boolean = false
 ) {
 
     fun isBleEnabled(): Boolean = isBleDataRetrievalEnabled || isBlePeripheralModeEnabled
+
+    fun isDirectAccessDemoEnabled(): Boolean {
+        return directAccessDemoEnabled
+    }
 
     fun canToggleBleDataRetrievalMode(newBleCentralMode: Boolean): Boolean {
         val updatedState = copy(isBleDataRetrievalEnabled = newBleCentralMode)

@@ -123,7 +123,7 @@ class DirectAccessCredential: Credential {
     private val transport: DirectAccessTransport
     private val slot: Int
     private val attestation: List<X509Certificate>
-    internal val presentationPackage: PresentationPackage
+    val presentationPackage: PresentationPackage // todo examine whether to make private
 
     private fun getNextAvailableSlot(): Int {
         // Currently Applet supports only one slot.
@@ -210,29 +210,9 @@ class DirectAccessCredential: Credential {
         operation: Byte
     ): ByteArray? {
         val beginApdu: ByteArray = apduHelper.createProvisionSwapInApdu(
-            cmd, slot,
-            data, offset, length, operation
-        )
+            cmd, slot, data, offset, length, operation)
         val response: ByteArray = transport.sendData(beginApdu)
         return cborHelper.decodeProvisionResponse(response)
-    }
-
-    @Throws(IOException::class)
-    private fun swapIn(
-        slot: Int,
-        data: ByteArray,
-        offset: Int,
-        length: Int,
-        operation: Byte
-    ): ByteArray? {
-        return sendApdu(
-            DirectAccessAPDUHelper.CMD_MDOC_SWAP_IN,
-            slot,
-            data,
-            offset,
-            length,
-            operation
-        )
     }
 
     // Provisions credential data for a specific signing key request.
@@ -329,27 +309,39 @@ class DirectAccessCredential: Credential {
             var start = 0
             val maxTransmitBufSize = 512
             // BEGIN
-            swapIn(
+            sendApdu(
+                DirectAccessAPDUHelper.CMD_MDOC_SWAP_IN,
                 SLOT_0,
-                encryptedData, 0, maxTransmitBufSize, PROVISION_BEGIN
+                encryptedData,
+                0,
+                maxTransmitBufSize,
+                PROVISION_BEGIN
             )
             start += maxTransmitBufSize
             remaining -= maxTransmitBufSize
 
             // UPDATE
             while (remaining > maxTransmitBufSize) {
-                swapIn(
+                sendApdu(
+                    DirectAccessAPDUHelper.CMD_MDOC_SWAP_IN,
                     SLOT_0,
-                    encryptedData, start, maxTransmitBufSize, PROVISION_UPDATE
+                    encryptedData,
+                    start,
+                    maxTransmitBufSize,
+                    PROVISION_UPDATE
                 )
                 start += maxTransmitBufSize
                 remaining -= maxTransmitBufSize
             }
 
             // Finish
-            swapIn(
+            sendApdu(
+                DirectAccessAPDUHelper.CMD_MDOC_SWAP_IN,
                 SLOT_0,
-                encryptedData, start, remaining, PROVISION_FINISH
+                encryptedData,
+                start,
+                remaining,
+                PROVISION_FINISH
             )
         } catch (e: IOException) {
             throw java.lang.IllegalStateException("Failed to provision credential data $e")

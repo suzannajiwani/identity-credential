@@ -13,6 +13,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.activityViewModels
 import androidx.navigation.fragment.findNavController
+import com.android.identity.direct_access.DirectAccessTransport
 import com.android.identity.wallet.R
 import com.android.identity.wallet.adapter.DocumentAdapter
 import com.android.identity.wallet.databinding.FragmentSelectDocumentBinding

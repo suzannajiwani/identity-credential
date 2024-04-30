@@ -7,20 +7,16 @@ import android.graphics.BitmapFactory
 import co.nstant.`in`.cbor.CborBuilder
 import co.nstant.`in`.cbor.model.DataItem
 import co.nstant.`in`.cbor.model.UnicodeString
-import com.android.identity.android.direct_access.MDocDocument
 import com.android.identity.cbor.Cbor
 import com.android.identity.document.Document
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentAttributeType
-import com.android.identity.util.Logger
 import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.R
 import com.android.identity.wallet.selfsigned.SelfSignedDocumentData
 import com.android.identity.wallet.util.Field
 import com.android.identity.wallet.util.FormatUtil
-import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.ProvisioningUtil
-import com.android.identity.wallet.util.ProvisioningUtil.Companion.toDADocumentInformation
 import com.android.identity.wallet.util.ProvisioningUtil.Companion.toDocumentInformation
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.util.logError
@@ -47,24 +43,9 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     fun getDocumentInformation(documentName: String): DocumentInformation? {
-        if (!PreferencesHelper.isDirectAccessDemoEnabled()) {
-            val documentStore = ProvisioningUtil.getInstance(context).documentStore
-            val document = documentStore.lookupDocument(documentName)
-            return document.toDocumentInformation()
-        } else {
-            val documentStore = ProvisioningUtil.getInstance(context).daDocumentStore
-            val document = documentStore.lookupDocument(documentName)
-            return document.toDADocumentInformation()
-        }
-    }
-
-    fun getMDocCredentialByName(documentName: String): MDocDocument? {
-        val documentInfo = getDocumentInformation(documentName)
-        documentInfo?.let {
-            val credentialStore = ProvisioningUtil.getInstance(context).daDocumentStore
-            return credentialStore.lookupDocument(documentName)
-        }
-        return null
+        val documentStore = ProvisioningUtil.getInstance(context).documentStore
+        val document = documentStore.lookupDocument(documentName)
+        return document.toDocumentInformation()
     }
 
     fun getDocumentByName(documentName: String): Document? {
@@ -145,34 +126,19 @@ class DocumentManager private constructor(private val context: Context) {
     }
 
     fun getDocuments(): List<DocumentInformation> {
-        return if (PreferencesHelper.isDirectAccessDemoEnabled()) {
-            val daStore = ProvisioningUtil.getInstance(context).daDocumentStore
-            daStore.listDocuments().mapNotNull { documentName ->
-                val credential = daStore.lookupDocument(documentName)
-                credential?.toDADocumentInformation()
-            }
-        } else {
-            val documentStore = ProvisioningUtil.getInstance(context).documentStore
-            return documentStore.listDocuments().mapNotNull { documentName ->
-                val document = documentStore.lookupDocument(documentName)
-                document.toDocumentInformation()
-            }
+        val documentStore = ProvisioningUtil.getInstance(context).documentStore
+        return documentStore.listDocuments().mapNotNull { documentName ->
+            val document = documentStore.lookupDocument(documentName)
+            document.toDocumentInformation()
         }
     }
 
 
     fun deleteCredentialByName(documentName: String) {
         val document = getDocumentInformation(documentName)
-        if (PreferencesHelper.isDirectAccessDemoEnabled()) {
-            document?.let {
-                val credentialStore = ProvisioningUtil.getInstance(context).daDocumentStore
-                credentialStore.deleteDocument(documentName)
-            }
-        } else {
-            document?.let {
-                val documentStore = ProvisioningUtil.getInstance(context).documentStore
-                documentStore.deleteDocument(documentName)
-            }
+        document?.let {
+            val documentStore = ProvisioningUtil.getInstance(context).documentStore
+            documentStore.deleteDocument(documentName)
         }
         registerDocuments()
     }
@@ -380,6 +346,6 @@ class DocumentManager private constructor(private val context: Context) {
     fun refreshCredentials(documentName: String) {
         val documentInformation = requireNotNull(getDocumentInformation(documentName))
         val document = requireNotNull(getDocumentByName(documentName))
-        ProvisioningUtil.getInstance(context).refreshCredentials(document, documentInformation.docType)
+        ProvisioningUtil.getInstance(context).refreshMdocCredentials(document, documentInformation.docType)
     }
 }

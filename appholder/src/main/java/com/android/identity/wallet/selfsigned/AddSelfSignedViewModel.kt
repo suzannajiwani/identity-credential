@@ -30,6 +30,12 @@ class AddSelfSignedViewModel(
         }
     }
 
+    fun updateDirectAccess(newValue: Boolean) {
+        savedStateHandle.updateState<AddSelfSignedScreenState> {
+            it.copy(includeDirectAccessCred = newValue)
+        }
+    }
+
     fun updateCardArt(newValue: DocumentColor) {
         savedStateHandle.updateState<AddSelfSignedScreenState> {
             it.copy(cardArt = newValue)

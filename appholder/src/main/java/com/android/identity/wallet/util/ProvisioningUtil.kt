@@ -8,8 +8,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
-import com.android.identity.android.direct_access.DocumentDataParser
-import com.android.identity.android.direct_access.MDocDocument
+import com.android.identity.android.direct_access.DirectAccessCredential
 import com.android.identity.cbor.Bstr
 import com.android.identity.cbor.Cbor
 import com.android.identity.cbor.Tagged
@@ -58,101 +57,13 @@ class ProvisioningUtil private constructor(
     val documentStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         HolderApp.createDocumentStore(context, secureAreaRepository)
     }
-    val daDocumentStore by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        HolderApp.createMdocDocumentStore(context, secureAreaRepository)
+
+    private fun ProvisionInfo.documentName(): String {
+        val regex = Regex("[^A-Za-z0-9 ]")
+        return regex.replace(docName, "").replace(" ", "_").lowercase()
     }
 
-    private fun provisionSelfSignedDirectAccess(
-        nameSpacedData: NameSpacedData,
-        provisionInfo: ProvisionInfo,
-    ) {
-        val provisioningChallenge = "dummyChallenge".toByteArray(StandardCharsets.UTF_8)
-        val credential: MDocDocument = daDocumentStore.createDocument(
-            provisionInfo.documentName(),
-            DocumentDataParser.MDL_DOC_TYPE,
-            provisioningChallenge,
-            provisionInfo.numberMso,
-            Duration.ofDays(provisionInfo.minValidityInDays.toLong()))
-        //val certChain = credential.credentialKeyCertificateChain
-        val authKeysNeedCert =
-        credential.getSigningKeyCertificationRequests(Duration.ZERO) // TODO What time to pass
-        val now = Timestamp.now()
-        val validFrom = now
-        val validityInDays = provisionInfo.validityInDays.toLong()
-        val validUntil = Timestamp.ofEpochMilli(validFrom.toEpochMilli() + validityInDays*86400*1000L)
-        for (authKeyCert : MDocDocument.MDocSigningKeyCertificationRequest in authKeysNeedCert) {
-            val msoGenerator = MobileSecurityObjectGenerator(
-                "SHA-256",
-                provisionInfo.docType,
-                authKeyCert.certificate.publicKey.toEcPublicKey(EcCurve.P256)
-            )
-            msoGenerator.setValidityInfo(now, validFrom, validUntil, null)
-            val deterministicRandomProvider = Random(42)
-            val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
-                nameSpacedData,
-                deterministicRandomProvider,
-                16,
-                null
-            )
-
-            for (nameSpaceName in issuerNameSpaces.keys) {
-                val digests = MdocUtil.calculateDigestsForNameSpace(
-                    nameSpaceName,
-                    issuerNameSpaces,
-                    Algorithm.SHA256
-                )
-                msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
-            }
-
-            val mso = msoGenerator.generate()
-            val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
-
-            val issuerKeyPair = when (provisionInfo.docType) {
-                MVR_DOCTYPE -> KeysAndCertificates.getMekbDsKeyPair(context)
-                MICOV_DOCTYPE -> KeysAndCertificates.getMicovDsKeyPair(context)
-                else -> KeysAndCertificates.getMdlDsKeyPair(context)
-            }
-
-            val issuerCert = when (provisionInfo.docType) {
-                MVR_DOCTYPE -> KeysAndCertificates.getMekbDsCertificate(context)
-                MICOV_DOCTYPE -> KeysAndCertificates.getMicovDsCertificate(context)
-                else -> KeysAndCertificates.getMdlDsCertificate(context)
-            }
-
-            val encodedIssuerAuth = Cbor.encode(
-                Cose.coseSign1Sign(
-                    issuerKeyPair.private.toEcPrivateKey(issuerKeyPair.public, EcCurve.P256),
-                    taggedEncodedMso,
-                    true,
-                    Algorithm.ES256,
-                    protectedHeaders = mapOf(
-                        Pair(
-                            CoseNumberLabel(Cose.COSE_LABEL_ALG),
-                            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
-                        )
-                    ),
-                    unprotectedHeaders = mapOf(
-                        Pair(
-                            CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
-                            CertificateChain(listOf(Certificate(issuerCert.encoded))).toDataItem
-                        )
-                    ),
-                ).toDataItem
-            )
-
-            val issuerProvidedCredentialData = StaticCredentialDataGenerator(
-                issuerNameSpaces,
-                encodedIssuerAuth,
-                provisionInfo.docType,
-                KeysAndCertificates.getTrustedReaderCertificates(context)
-            ).generate()
-            print(issuerProvidedCredentialData)
-            credential.provision(authKeyCert, Instant.now(), issuerProvidedCredentialData);
-        }
-        credential.swapIn(authKeysNeedCert[0]);
-    }
-
-    private fun provisionSelfSignedHce(
+    fun provisionSelfSigned(
         nameSpacedData: NameSpacedData,
         provisionInfo: ProvisionInfo,
     ) {
@@ -183,23 +94,10 @@ class ProvisioningUtil private constructor(
             support.createAuthKeySettingsConfiguration(provisionInfo.secureAreaSupportState))
 
         // Create initial batch of credentials
-        refreshCredentials(document, provisionInfo.docType)
-    }
-
-    private fun ProvisionInfo.documentName(): String {
-        val regex = Regex("[^A-Za-z0-9 ]")
-        return regex.replace(docName, "").replace(" ", "_").lowercase()
-    }
-
-    fun provisionSelfSigned(
-        nameSpacedData: NameSpacedData,
-        provisionInfo: ProvisionInfo,
-    ) {
-        if (PreferencesHelper.isDirectAccessDemoEnabled()) {
-            provisionSelfSignedDirectAccess(nameSpacedData, provisionInfo)
-        } else {
-            provisionSelfSignedHce(nameSpacedData, provisionInfo)
+        if (provisionInfo.includeDirectAccessCred) {
+            refreshDaCredentials(document, provisionInfo.docType)
         }
+        refreshMdocCredentials(document, provisionInfo.docType)
     }
 
     fun trackUsageTimestamp(document: Document) {
@@ -207,7 +105,7 @@ class ProvisioningUtil private constructor(
         document.applicationData.setNumber(LAST_TIME_USED, now.toEpochMilli())
     }
 
-    fun refreshCredentials(document: Document, docType: String) {
+    fun refreshMdocCredentials(document: Document, docType: String) {
         val secureAreaIdentifier = document.applicationData.getString(AUTH_KEY_SECURE_AREA_IDENTIFIER)
         val minValidTimeDays = document.applicationData.getNumber(MIN_VALIDITY_IN_DAYS)
         val maxUsagesPerCred = document.applicationData.getNumber(MAX_USAGES_PER_KEY)
@@ -231,11 +129,11 @@ class ProvisioningUtil private constructor(
 
         val pendingCredsCount = DocumentUtil.managedCredentialHelper(
             document,
-            CREDENTIAL_DOMAIN,
+            MDOC_CREDENTIAL_DOMAIN,
             {toBeReplaced -> MdocCredential(
                 document,
                 toBeReplaced,
-                CREDENTIAL_DOMAIN,
+                MDOC_CREDENTIAL_DOMAIN,
                 secureArea,
                 settings,
                 docType
@@ -250,7 +148,7 @@ class ProvisioningUtil private constructor(
             return
         }
 
-        for (pendingCred in document.pendingCredentials.filter { it.domain == CREDENTIAL_DOMAIN }) {
+        for (pendingCred in document.pendingCredentials.filter { it.domain == MDOC_CREDENTIAL_DOMAIN }) {
             pendingCred as MdocCredential
             val msoGenerator = MobileSecurityObjectGenerator(
                 "SHA-256",
@@ -341,6 +239,137 @@ class ProvisioningUtil private constructor(
         }
     }
 
+    fun refreshDaCredentials(document: Document, docType: String) {
+        val minValidTimeDays = document.applicationData.getNumber(MIN_VALIDITY_IN_DAYS)
+        val maxUsagesPerCred = document.applicationData.getNumber(MAX_USAGES_PER_KEY)
+        val numCreds = 1 // todo, need to think through
+        val validityInDays = document.applicationData.getNumber(VALIDITY_IN_DAYS).toInt()
+
+        val now = Timestamp.now()
+        val validFrom = now
+        val validUntil = Timestamp.ofEpochMilli(validFrom.toEpochMilli() + validityInDays*86400*1000L)
+
+        val provisioningChallenge = "dummyChallenge".toByteArray(StandardCharsets.UTF_8)
+        val pendingCredsCount = DocumentUtil.managedCredentialHelper(
+            document,
+            DA_CREDENTIAL_DOMAIN,
+            {toBeReplaced -> DirectAccessCredential(
+                document,
+                toBeReplaced,
+                DA_CREDENTIAL_DOMAIN,
+                docType,
+                provisioningChallenge,
+                Duration.ofDays(validityInDays.toLong())
+            )},
+            now,
+            numCreds,
+            maxUsagesPerCred.toInt(),
+            minValidTimeDays*24*60*60*1000L,
+            false
+        )
+        if (pendingCredsCount <= 0) {
+            return
+        }
+
+        for (pendingCred in document.pendingCredentials.filter { it.domain == DA_CREDENTIAL_DOMAIN }) {
+            pendingCred as DirectAccessCredential
+            val msoGenerator = MobileSecurityObjectGenerator(
+                "SHA-256",
+                docType,
+                pendingCred.presentationPackage.signingCert[0].publicKey.toEcPublicKey(EcCurve.P256)
+            )
+            msoGenerator.setValidityInfo(now, validFrom, validUntil, null)
+
+            // For mDLs, override the portrait with AuthenticationKeyCounter on top
+            //
+            var dataElementExceptions: Map<String, List<String>>? = null
+            var dataElementOverrides: Map<String, Map<String, ByteArray>>? = null
+            if (docType.equals("org.iso.18013.5.1.mDL")) {
+                val portrait = document.applicationData.getNameSpacedData("documentData")
+                    .getDataElementByteString("org.iso.18013.5.1", "portrait")
+                val portrait_override = overridePortrait(portrait,
+                    pendingCred.credentialCounter)
+
+                dataElementExceptions =
+                    mapOf("org.iso.18013.5.1" to listOf("given_name", "portrait"))
+                dataElementOverrides =
+                    mapOf("org.iso.18013.5.1" to mapOf(
+                        "portrait" to Cbor.encode(Bstr(portrait_override))))
+            }
+
+            val issuerNameSpaces = MdocUtil.generateIssuerNameSpaces(
+                document.applicationData.getNameSpacedData("documentData"),
+                Random.Default,
+                16,
+                dataElementOverrides
+            )
+
+            for (nameSpaceName in issuerNameSpaces.keys) {
+                val digests = MdocUtil.calculateDigestsForNameSpace(
+                    nameSpaceName,
+                    issuerNameSpaces,
+                    Algorithm.SHA256
+                )
+                msoGenerator.addDigestIdsForNamespace(nameSpaceName, digests)
+            }
+
+            val mso = msoGenerator.generate()
+            val taggedEncodedMso = Cbor.encode(Tagged(Tagged.ENCODED_CBOR, Bstr(mso)))
+
+            val issuerKeyPair = when (docType) {
+                MVR_DOCTYPE -> KeysAndCertificates.getMekbDsKeyPair(context)
+                MICOV_DOCTYPE -> KeysAndCertificates.getMicovDsKeyPair(context)
+                else -> KeysAndCertificates.getMdlDsKeyPair(context)
+            }
+
+            val issuerCert = when (docType) {
+                MVR_DOCTYPE -> KeysAndCertificates.getMekbDsCertificate(context)
+                MICOV_DOCTYPE -> KeysAndCertificates.getMicovDsCertificate(context)
+                else -> KeysAndCertificates.getMdlDsCertificate(context)
+            }
+
+            val encodedIssuerAuth = Cbor.encode(
+                Cose.coseSign1Sign(
+                    issuerKeyPair.private.toEcPrivateKey(issuerKeyPair.public, EcCurve.P256),
+                    taggedEncodedMso,
+                    true,
+                    Algorithm.ES256,
+                    protectedHeaders = mapOf(
+                        Pair(
+                            CoseNumberLabel(Cose.COSE_LABEL_ALG),
+                            Algorithm.ES256.coseAlgorithmIdentifier.toDataItem
+                        )
+                    ),
+                    unprotectedHeaders = mapOf(
+                        Pair(
+                            CoseNumberLabel(Cose.COSE_LABEL_X5CHAIN),
+                            CertificateChain(listOf(Certificate(issuerCert.encoded))).toDataItem
+                        )
+                    ),
+                ).toDataItem
+            )
+
+            // todo look closer at the difference here to see why da uses StaticCredentialDataGenerator
+//            val issuerProvidedAuthenticationData = StaticAuthDataGenerator(
+//                MdocUtil.stripIssuerNameSpaces(issuerNameSpaces, dataElementExceptions),
+//                encodedIssuerAuth
+//            ).generate()
+            val issuerProvidedCredentialData = StaticCredentialDataGenerator(
+                issuerNameSpaces,
+                encodedIssuerAuth,
+                docType,
+                KeysAndCertificates.getTrustedReaderCertificates(context)
+            ).generate()
+
+            pendingCred.certify(
+                issuerProvidedCredentialData,
+                validFrom,
+                validUntil
+            )
+            pendingCred.swapIn()
+        }
+    }
+
     // Puts the string "MSO ${counter}" on top of the portrait image.
     private fun overridePortrait(encodedPortrait: ByteArray, counter: Number): ByteArray {
         val options = BitmapFactory.Options()
@@ -372,7 +401,8 @@ class ProvisioningUtil private constructor(
 
     companion object {
 
-        const val CREDENTIAL_DOMAIN = "mdoc/MSO"
+        const val MDOC_CREDENTIAL_DOMAIN = "mdoc/MSO"
+        const val DA_CREDENTIAL_DOMAIN = "directaccess/mdoc/MSO"
         private const val USER_VISIBLE_NAME = "userVisibleName"
         const val DOCUMENT_TYPE = "documentType"
         private const val DATE_PROVISIONED = "dateProvisioned"
@@ -438,37 +468,6 @@ class ProvisioningUtil private constructor(
                     maxUsagesPerKey = it.applicationData.getNumber(MAX_USAGES_PER_KEY).toInt(),
                     lastTimeUsed = lastTimeUsed,
                     authKeys = credentials
-                )
-            }
-        }
-
-        fun MDocDocument?.toDADocumentInformation(): DocumentInformation? {
-            return this?.let {
-
-                val authKeys = it.signingKeysMetadata.map { metaData ->
-                    DocumentInformation.KeyData(
-                        counter = 0,
-                        validFrom = "",
-                        validUntil = "",
-                        domain = "",
-                        issuerDataBytesCount = 10000,
-                        usagesCount = metaData.usageCount,
-                        keyPurposes = KeyPurpose.AGREE_KEY,
-                        ecCurve = EcCurve.P256,
-                        isHardwareBacked = true,
-                        secureAreaDisplayName = ""
-                    )
-                }
-                DocumentInformation(
-                    userVisibleName = "Erika Driving License",
-                    docName = "erikas_da_driving_license",
-                    docType = "org.iso.18013.5.1.mDL",
-                    dateProvisioned = "",
-                    documentColor = 0,
-                    selfSigned = true,
-                    maxUsagesPerKey = 10,
-                    lastTimeUsed = "",
-                    authKeys = authKeys
                 )
             }
         }

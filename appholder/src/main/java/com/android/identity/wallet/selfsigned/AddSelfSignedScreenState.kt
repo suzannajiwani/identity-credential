@@ -12,6 +12,7 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class AddSelfSignedScreenState(
     val documentType: String = DocumentData.MDL_DOCTYPE,
+    val includeDirectAccessCred: Boolean = true,
     val cardArt: DocumentColor = DocumentColor.Green,
     val documentName: String = "Driving License",
     val currentSecureArea: CurrentSecureArea = ProvisioningUtil.defaultSecureArea.toSecureAreaState(),
