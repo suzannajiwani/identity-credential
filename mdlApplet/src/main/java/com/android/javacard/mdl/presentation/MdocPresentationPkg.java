@@ -48,7 +48,7 @@ public class MdocPresentationPkg {
   public static final byte NS_KEY_ID_OFFSET = 0;
   public static final byte NS_START_OFFSET = 1;
   public static final byte NS_END_OFFSET = 2;
-  public static final byte MAX_NS_COUNT = 1;
+  public static final byte MAX_NS_COUNT = 8;
   public static final byte NS_TABLE_ROW_SIZE = 3;
   public static final byte NS_TABLE_SIZE = (byte) (MAX_NS_COUNT * NS_TABLE_ROW_SIZE);
 
