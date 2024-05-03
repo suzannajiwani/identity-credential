@@ -11,15 +11,15 @@ import com.android.identity.cbor.Cbor
 import com.android.identity.document.Document
 import com.android.identity.document.NameSpacedData
 import com.android.identity.documenttype.DocumentAttributeType
+import com.android.identity.wallet.HolderApp
+import com.android.identity.wallet.R
 import com.android.identity.wallet.selfsigned.SelfSignedDocumentData
 import com.android.identity.wallet.util.Field
 import com.android.identity.wallet.util.FormatUtil
-import com.android.identity.wallet.HolderApp
 import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.ProvisioningUtil.Companion.toDocumentInformation
 import com.android.identity.wallet.util.log
 import com.android.identity.wallet.util.logError
-import com.android.identity.wallet.R
 import com.android.mdl.app.credman.IdentityCredentialEntry
 import com.android.mdl.app.credman.IdentityCredentialField
 import com.android.mdl.app.credman.IdentityCredentialRegistry
@@ -30,6 +30,7 @@ import java.util.Locale
 class DocumentManager private constructor(private val context: Context) {
     val client = IdentityCredentialManager.Companion.getClient(context)
     companion object {
+        private const val TAG = "DocumentManager"
 
         @SuppressLint("StaticFieldLeak")
         @Volatile
@@ -345,6 +346,6 @@ class DocumentManager private constructor(private val context: Context) {
     fun refreshCredentials(documentName: String) {
         val documentInformation = requireNotNull(getDocumentInformation(documentName))
         val document = requireNotNull(getDocumentByName(documentName))
-        ProvisioningUtil.getInstance(context).refreshCredentials(document, documentInformation.docType)
+        ProvisioningUtil.getInstance(context).refreshMdocCredentials(document, documentInformation.docType)
     }
 }

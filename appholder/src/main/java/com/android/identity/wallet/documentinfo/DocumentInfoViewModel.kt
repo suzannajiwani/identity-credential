@@ -72,7 +72,8 @@ class DocumentInfoViewModel(
                     provisioningDate = documentInformation.dateProvisioned,
                     isSelfSigned = documentInformation.selfSigned,
                     lastTimeUsedDate = documentInformation.lastTimeUsed,
-                    authKeys = documentInformation.authKeys.asScreenStateKeys()
+                    authKeys = documentInformation.authKeys.asScreenStateKeys(),
+                    daKeys = documentInformation.daKeys.asScreenStateDaKeys()
                 )
             }
         }
@@ -90,6 +91,20 @@ class DocumentInfoViewModel(
                 keyPurposes = keyData.keyPurposes,
                 ecCurve = keyData.ecCurve,
                 isHardwareBacked = keyData.isHardwareBacked,
+                secureAreaDisplayName = keyData.secureAreaDisplayName
+            )
+        }
+    }
+
+    private fun List<DocumentInformation.DirectAccessCredInfo>.asScreenStateDaKeys(): List<DocumentInfoScreenState.DaKeyInformation> {
+        return map { keyData ->
+            DocumentInfoScreenState.DaKeyInformation(
+                counter = keyData.counter,
+                validFrom = keyData.validFrom,
+                validUntil = keyData.validUntil,
+                domain = keyData.domain,
+                issuerDataBytesCount = keyData.issuerDataBytesCount,
+                usagesCount = keyData.usagesCount,
                 secureAreaDisplayName = keyData.secureAreaDisplayName
             )
         }

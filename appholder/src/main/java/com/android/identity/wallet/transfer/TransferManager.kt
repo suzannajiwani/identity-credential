@@ -9,6 +9,7 @@ import android.view.View
 import android.widget.ImageView
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import com.android.identity.credential.Credential
 import com.android.identity.document.DocumentRequest
 import com.android.identity.document.NameSpacedData
 import com.android.identity.mdoc.mso.StaticAuthDataParser
@@ -181,12 +182,18 @@ class TransferManager private constructor(private val context: Context) {
 
         val request = DocumentRequest(dataElements)
 
-        val credentialToUse: MdocCredential
+        val credentialToUse: Credential
         if (credential != null) {
             credentialToUse = credential
         } else {
+            // todo recognize when to use a specific credential
+            val domain = if (PreferencesHelper.isDirectAccessDemoEnabled()) {
+                ProvisioningUtil.DA_CREDENTIAL_DOMAIN
+            } else {
+                ProvisioningUtil.MDOC_CREDENTIAL_DOMAIN
+            }
             credentialToUse = document.findCredential(
-                ProvisioningUtil.CREDENTIAL_DOMAIN,
+                domain,
                 Timestamp.now()
             ) as MdocCredential?
                 ?: throw IllegalStateException("No credential available")

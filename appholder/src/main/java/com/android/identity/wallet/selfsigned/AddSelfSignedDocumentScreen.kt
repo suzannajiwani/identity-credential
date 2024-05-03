@@ -35,11 +35,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.android.identity.wallet.R
 import com.android.identity.wallet.composables.CounterInput
 import com.android.identity.wallet.composables.DropDownIndicator
@@ -53,6 +55,7 @@ import com.android.identity.wallet.support.CurrentSecureArea
 import com.android.identity.wallet.support.SecureAreaSupport
 import com.android.identity.wallet.support.SecureAreaSupportState
 import com.android.identity.wallet.support.toSecureAreaState
+import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.ProvisioningUtil
 
 @Composable
@@ -75,7 +78,7 @@ fun AddSelfSignedDocumentScreen(
         onMaxUseOfMsoChanged = viewModel::updateMaxUseOfMso,
         onValidityInDaysChanged = viewModel::updateValidityInDays,
         onMinValidityInDaysChanged = viewModel::updateMinValidityInDays,
-        onNext = onNext
+        onNext = onNext,
     )
 }
 
@@ -93,7 +96,7 @@ private fun AddSelfSignedDocumentScreenContent(
     onMaxUseOfMsoChanged: (newValue: Int) -> Unit,
     onValidityInDaysChanged: (newValue: Int) -> Unit,
     onMinValidityInDaysChanged: (newValue: Int) -> Unit,
-    onNext: () -> Unit
+    onNext: () -> Unit,
 ) {
     Scaffold(modifier = modifier) { paddingValues ->
         val scrollState = rememberScrollState()
@@ -112,6 +115,16 @@ private fun AddSelfSignedDocumentScreenContent(
                 currentDocumentType = screenState.documentType,
                 onDocumentTypeSelected = onDocumentTypeChanged
             )
+            if (PreferencesHelper.isDirectAccessDemoEnabled()) {
+                Row(modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                    Text(
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                        text = "This document will contain a Direct Access Credential",
+                        fontSize = 15.sp,
+                        color = Color.Red
+                    )
+                }
+            }
             CardArtChooser(
                 modifier = Modifier
                     .fillMaxWidth()

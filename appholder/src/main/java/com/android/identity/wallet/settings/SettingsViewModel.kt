@@ -24,7 +24,8 @@ class SettingsViewModel : ViewModel() {
             isBlePeripheralModeEnabled = PreferencesHelper.isBleDataRetrievalPeripheralModeEnabled(),
             wifiAwareEnabled = PreferencesHelper.isWifiDataRetrievalEnabled(),
             nfcEnabled = PreferencesHelper.isNfcDataRetrievalEnabled(),
-            debugEnabled = PreferencesHelper.isDebugLoggingEnabled()
+            debugEnabled = PreferencesHelper.isDebugLoggingEnabled(),
+            directAccessDemoEnabled = PreferencesHelper.isDirectAccessDemoEnabled()
         )
         mutableSettingsState.value = settingsState
     }
@@ -91,6 +92,27 @@ class SettingsViewModel : ViewModel() {
     fun onDebugLoggingChanged(newValue: Boolean) {
         PreferencesHelper.setDebugLoggingEnabled(newValue)
         mutableSettingsState.update { it.copy(debugEnabled = newValue) }
+    }
+
+    fun onDirectAccessDemoChanged(newValue: Boolean) {
+        PreferencesHelper.setDirectAccessDemoEnabled(newValue)
+        if (newValue) {
+            PreferencesHelper.setNfcDataRetrievalEnabled(true)
+            PreferencesHelper.setUseStaticHandover(true)
+            PreferencesHelper.setConnectionAutoCloseEnabled(true)
+            PreferencesHelper.setBleDataRetrievalEnabled(false)
+            mutableSettingsState.update {
+                it.copy(
+                    directAccessDemoEnabled = newValue,
+                    nfcEnabled = true,
+                    useStaticHandover = true,
+                    autoCloseEnabled = true,
+                    isBleDataRetrievalEnabled = false
+                ) }
+        } else {
+            mutableSettingsState.update { it.copy(directAccessDemoEnabled = newValue) }
+        }
+
     }
 }
 

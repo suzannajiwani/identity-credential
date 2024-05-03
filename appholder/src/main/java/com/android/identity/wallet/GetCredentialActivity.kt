@@ -26,6 +26,7 @@ import com.android.identity.securearea.KeyUnlockData
 import com.android.identity.util.Constants
 import com.android.identity.util.Logger
 import com.android.identity.util.Timestamp
+import com.android.identity.wallet.util.PreferencesHelper
 import com.android.identity.wallet.util.ProvisioningUtil
 import com.android.identity.wallet.util.log
 import com.google.android.gms.identitycredentials.GetCredentialResponse
@@ -125,8 +126,14 @@ class GetCredentialActivity : FragmentActivity() {
         val document = documentStore.lookupDocument(documentName)
         val nameSpacedData = document!!.applicationData.getNameSpacedData("documentData")
 
+        // todo recognize when to use a specific credential
+        val domain = if (PreferencesHelper.isDirectAccessDemoEnabled()) {
+            ProvisioningUtil.DA_CREDENTIAL_DOMAIN
+        } else {
+            ProvisioningUtil.MDOC_CREDENTIAL_DOMAIN
+        }
         val credential = document.findCredential(
-            ProvisioningUtil.CREDENTIAL_DOMAIN,
+            domain,
             Timestamp.now()
         ) as MdocCredential? ?: throw IllegalStateException("No credential")
         val staticAuthData = StaticAuthDataParser(credential.issuerProvidedData).parse()

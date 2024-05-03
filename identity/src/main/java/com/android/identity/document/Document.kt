@@ -97,6 +97,8 @@ class Document private constructor(
     private val credentialFactory: CredentialFactory
 ) {
     private var addedToStore = false
+    var directAccessTransport = store.directAccessTransport
+        private set
 
     internal fun addToStore() {
         addedToStore = true

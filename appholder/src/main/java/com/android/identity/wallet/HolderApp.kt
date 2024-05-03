@@ -2,6 +2,7 @@ package com.android.identity.wallet
 
 import android.app.Application
 import android.content.Context
+import com.android.identity.android.direct_access.DirectAccessCredential
 import com.android.identity.android.securearea.AndroidKeystoreSecureArea
 import com.android.identity.android.storage.AndroidStorageEngine
 import com.android.identity.android.util.AndroidLogPrinter
@@ -21,6 +22,7 @@ import com.android.identity.trustmanagement.TrustManager
 import com.android.identity.trustmanagement.TrustPoint
 import com.android.identity.util.Logger
 import com.android.identity.wallet.document.KeysAndCertificates
+import com.android.identity.wallet.document.JCardSimTransport
 import com.android.identity.wallet.util.PeriodicKeysRefreshWorkRequest
 import com.android.identity.wallet.util.PreferencesHelper
 import com.google.android.material.color.DynamicColors
@@ -88,9 +90,14 @@ class HolderApp: Application() {
             secureAreaRepository.addImplementation(androidKeystoreSecureArea)
             secureAreaRepository.addImplementation(softwareSecureArea)
 
-            var credentialFactory = CredentialFactory()
+            val credentialFactory = CredentialFactory()
             credentialFactory.addCredentialImplementation(MdocCredential::class)
-            return DocumentStore(storageEngine, secureAreaRepository, credentialFactory)
+            credentialFactory.addCredentialImplementation(DirectAccessCredential::class)
+            return DocumentStore(
+                storageEngine,
+                secureAreaRepository,
+                credentialFactory,
+                JCardSimTransport.instance())
         }
     }
 

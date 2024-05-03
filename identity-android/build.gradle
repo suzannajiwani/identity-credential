@@ -9,7 +9,7 @@ android {
     compileSdk 33
 
     defaultConfig {
-        minSdkVersion 24
+        minSdkVersion libs.versions.min.sdk.get() as int
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         consumerProguardFiles "consumer-rules.pro"
@@ -33,6 +33,9 @@ android {
 dependencies {
     implementation project(':identity')
     implementation project(':identity-mdoc')
+    implementation project(path: ':mdlApplet')
+    implementation project(path: ':JCardSim')
+    implementation project(path: ':smartcardio')
     implementation(libs.androidx.annotation)
     implementation libs.androidx.biometrics
     implementation libs.bouncy.castle.bcprov

@@ -113,6 +113,9 @@
     <string name="bt_close_connection">Close Connection</string>
     <string name="txt_document_type">Document type</string>
     <string name="txt_document_name">Document name</string>
+    <string name="txt_cred_type">Credential type</string>
+    <string name="txt_cred_mdoc">Mdoc Credential</string>
+    <string name="txt_cred_da">Direct Access Credential</string>
     <string name="txt_storage_implementation">Storage implementation</string>
     <string name="txt_keystore_implementation">Secure Area</string>
     <string name="txt_user_authentication">Use user authentication</string>
