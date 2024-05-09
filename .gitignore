@@ -12,3 +12,4 @@ fastlane/report.xml
 wwwverifier/build/*
 JCardSim/*
 mdlApplet/*
+smartcardio/*
