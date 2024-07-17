@@ -10,10 +10,9 @@ import com.android.identity.securearea.SecureArea
 import com.android.identity.securearea.software.SoftwareSecureArea
 import com.android.identity.storage.StorageEngine
 import io.ktor.client.HttpClient
-import io.ktor.client.engine.ProxyBuilder
 import io.ktor.client.engine.java.Java
 import java.io.File
-import jakarta.servlet.ServletConfig
+import javax.servlet.ServletConfig
 import kotlinx.coroutines.runBlocking
 import kotlinx.io.bytestring.ByteString
 import kotlin.reflect.KClass
@@ -46,11 +45,14 @@ class ServerEnvironment(
     }
 
     private fun defaultDatabase(): String {
+        if (System.getenv("GAE_ENV").startsWith("standard")) {
+            return "cloud"
+        }
         val dbFile = File("environment/db/db.hsqldb").absoluteFile
         if (!dbFile.canRead()) {
             val parent = File(dbFile.parent)
             if (!parent.exists()) {
-                if  (!parent.mkdirs()) {
+                if (!parent.mkdirs()) {
                     throw Exception("Cannot create database folder ${parent.absolutePath}")
                 }
             }

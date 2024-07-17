@@ -175,20 +175,10 @@ samples are included
 - `testapp` - a Compose Multiplatform application for manually testing elements of the
   project that aren't easily tested using unit tests.
 
-## ISO 18013-7 Reader Website
-
-The `wwwverifier` module contains the source code for a website acting as an
-mdoc reader according to the latest ISO 18013-7 working draft (as of Sep 2023)
-and it's implementing  the so-called REST API. There is currently a test instance
-of this application available at https://mdoc-reader-external.uc.r.appspot.com/.
-The Wallet Android  application also has support for the REST API and registers
-on Android for the `mdoc://` URI scheme. This can be tested end-to-end by going
-to the reader  website (URL above) and clicking on one of the "Request" buttons,
-and then  hitting the `mdoc://` link presented on the site. This will cause the
-browser  to invoke the Wallet app which will then connect to the reader and send
-the credential after user consent.
-
 ### Building and deploying the ISO 18013-7 Reader Website
+
+There is currently an instance of the `server` module available at 
+https://mdoc-reader-external.uc.r.appspot.com/.
 
 First, a project must first be created at https://console.cloud.google.com. Afterwards,
 navigate to Cloud Shell (https://shell.cloud.google.com), and clone the Identity Credential

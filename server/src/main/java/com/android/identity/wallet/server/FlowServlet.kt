@@ -18,12 +18,12 @@ import com.android.identity.issuance.hardcoded.IssuingAuthorityState
 import com.android.identity.issuance.wallet.WalletServerState
 import com.android.identity.util.Logger
 import io.ktor.utils.io.core.toByteArray
-import jakarta.servlet.ServletConfig
-import jakarta.servlet.http.Cookie
-import jakarta.servlet.http.HttpServlet
+import javax.servlet.ServletConfig
+import javax.servlet.http.Cookie
+import javax.servlet.http.HttpServlet
 import kotlinx.coroutines.runBlocking
-import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
 import kotlinx.datetime.Clock
 import kotlinx.io.bytestring.ByteString
 import org.bouncycastle.jce.provider.BouncyCastleProvider
@@ -80,7 +80,8 @@ class FlowServlet : HttpServlet() {
                         "RootState",
                         "",
                         ByteString(newKey),
-                        "messageEncryptionKey")
+                        "messageEncryptionKey"
+                    )
                     newKey
                 }
             }
@@ -137,9 +138,9 @@ class FlowServlet : HttpServlet() {
         val prefix = "tid=$threadId host=$remoteHost"
         val requestLength = req.contentLength
         Logger.i(TAG, "$prefix: POST $path ($requestLength bytes)")
-        val parts = path.split("/")
+        var parts = path.split("/")
         if (parts.size != 2) {
-            Logger.i(TAG, "$prefix: malformed request")
+            Logger.i(TAG, "$prefix: malformed request $parts")
             throw Exception("Illegal request!")
         }
         val target = parts[0]
@@ -197,7 +198,7 @@ class FlowServlet : HttpServlet() {
                 val parsedCookie =
                     AdminAuthCookie.fromCbor(stateCipher.decrypt(Base64.decode(cookie.value)))
                 if (parsedCookie.expiration >= Clock.System.now()
-                        && parsedCookie.passwordHash == adminPasswordHash) {
+                    && parsedCookie.passwordHash == adminPasswordHash) {
                     return true
                 }
                 Logger.e(TAG, "Expired or stale Auth cookie: ${parsedCookie.expiration}")
