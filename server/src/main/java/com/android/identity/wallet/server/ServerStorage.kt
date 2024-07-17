@@ -1,9 +1,17 @@
 package com.android.identity.wallet.server
 
 import com.android.identity.flow.server.Storage
+import com.android.identity.util.Logger
+import com.google.cloud.secretmanager.v1.AccessSecretVersionRequest
+import com.google.cloud.secretmanager.v1.AccessSecretVersionResponse
+import com.google.cloud.secretmanager.v1.ProjectName
+import com.google.cloud.secretmanager.v1.SecretManagerServiceClient
+import com.zaxxer.hikari.HikariConfig
+import com.zaxxer.hikari.HikariDataSource
 import kotlinx.io.bytestring.ByteString
 import java.sql.Connection
 import java.sql.DriverManager
+import javax.sql.DataSource
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.random.Random
@@ -11,10 +19,11 @@ import kotlin.random.Random
 class ServerStorage(
     private val jdbc: String,
     private var user: String = "",
-    private val password: String = ""
+    private val password: String = "",
 ): Storage {
     private val createdTables = mutableSetOf<String>()
     private val blobType: String
+    private lateinit var pool: DataSource
 
     init {
         // initialize appropriate drives (this also ensures that dependencies don't get
@@ -22,6 +31,9 @@ class ServerStorage(
         if (jdbc.startsWith("jdbc:hsqldb:")) {
             blobType = "BLOB"
             org.hsqldb.jdbc.JDBCDriver()
+        } else if (jdbc.startsWith("cloud")) {
+            blobType = "BLOB"
+            this.pool = createConnectionPool()
         } else if (jdbc.startsWith("jdbc:mysql:")) {
             blobType = "LONGBLOB"  // MySQL BLOB is limited to 64k
             com.mysql.cj.jdbc.Driver()
@@ -127,6 +139,9 @@ class ServerStorage(
     }
 
     private fun acquireConnection(): Connection {
+        if (jdbc.startsWith("cloud")) {
+            return this.pool.connection
+        }
         return DriverManager.getConnection(jdbc, user, password)
     }
 
@@ -136,5 +151,46 @@ class ServerStorage(
 
     private fun sanitizeTable(table: String): String {
         return "Wt$table"
+    }
+
+    fun createConnectionPool(): DataSource {
+        // The configuration object specifies behaviors for the connection pool.
+        val config = HikariConfig()
+
+        val DB_NAME = "server"
+        val DB_PASS: String
+        val DB_USER = "root"
+        val INSTANCE_CONNECTION_NAME = "mdoc-reader-external:us-east1:wallet-server"
+
+        SecretManagerServiceClient.create().use { client ->
+            val request = AccessSecretVersionRequest.newBuilder().setName("projects/1048349407273/secrets/sql-user-pass/versions/latest").build()
+            val response: AccessSecretVersionResponse =
+                client.accessSecretVersion(request)
+
+            DB_PASS = response.payload.data.toStringUtf8()
+            Logger.d("SERVER STORAGE", DB_PASS)
+            Logger.d("SERVER STORAGE", DB_PASS.length.toString())
+        }
+
+        // Configure which instance and what database user to connect with.
+        config.jdbcUrl = java.lang.String.format("jdbc:mysql:///%s", DB_NAME)
+        config.username = DB_USER
+        config.password = DB_PASS
+
+        config.setDriverClassName(com.mysql.cj.jdbc.Driver::class.java.name)
+        config.addDataSourceProperty("socketFactory", "com.google.cloud.sql.mysql.SocketFactory")
+        config.addDataSourceProperty("cloudSqlInstance", INSTANCE_CONNECTION_NAME)
+
+
+        // The ipTypes argument can be used to specify a comma delimited list of preferred IP types
+        // for connecting to a Cloud SQL instance. The argument ipTypes=PRIVATE will force the
+        // SocketFactory to connect with an instance's associated private IP.
+        config.addDataSourceProperty("ipTypes", "PUBLIC,PRIVATE")
+
+        // ... Specify additional connection properties here.
+        // ...
+
+        // Initialize the connection pool using the configuration object.
+        return HikariDataSource(config)
     }
 }
